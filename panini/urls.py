@@ -14,4 +14,8 @@ urlpatterns = patterns('',
 
     # Uncomment the next line to enable the admin:
     # url(r'^admin/', include(admin.site.urls)),
+    url(r'^$', 'panini.views.index'),
+    url(r'^login/$', 'panini.views.login'),
+    url(r'^logout/$', 'panini.views.logout'),
+    url(r'^main/$', 'panini.views.main'),
 )

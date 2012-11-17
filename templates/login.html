@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block body %}
+<form method="POST" action="/login/">{% csrf_token %}
+    <!-- TODO: Error Handling -->
+    <!--<img src="/static/img/swmaestro.png" alt="SW Maestro" id="swmaestro">-->
+    <input type="text" name="username" placeholder="Username">
+    <input type="password" name="password" placeholder="Password">
+    <button type="submit" class="btn btn-primary">Login</button>
+</form>
+{% endblock %}
