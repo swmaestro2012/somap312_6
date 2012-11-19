@@ -109,6 +109,7 @@ TEMPLATE_DIRS = (
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
     '/root/panini/templates',
+    '/root/panini/panini/cluster/templates',
 )
 
 INSTALLED_APPS = (
@@ -122,6 +123,7 @@ INSTALLED_APPS = (
     # 'django.contrib.admin',
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
+    'panini.cluster',
 )
 
 # A sample logging configuration. The only tangible logging

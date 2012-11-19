@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block head %}
+<script>
+function show_add_cluster() {
+    document.getElementById("add_cluster").style.display = "block";
+}
+function add_cluster() {
+    var form = document.getElementById("add_cluster").children[0];
+    var csrf_token = form.getElementsByTagName("input")[0].getAttribute("value");
+    var new_cluster = form.elements["name"].value;
+    var body = "name="+new_cluster;
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("POST", "/add-cluster/", false);
+    xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    xmlhttp.setRequestHeader("X-CSRFToken", csrf_token);
+    xmlhttp.send(body);
+    document.location.reload(true);
+}
+function delete_cluster(cluster) {
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", "/delete-cluster/"+cluster+"/", false);
+    xmlhttp.send();
+    document.location.reload(true);
+}
+function update_server() {
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", "/cluster/"+curr_cluster+"/servers/", false);
+    xmlhttp.send();
+    document.getElementById("servers").innerHTML = xmlhttp.responseText;
+}
+function update_add_server() {
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", "/cluster/"+curr_cluster+"/add-server/", false);
+    xmlhttp.send();
+    document.getElementById("add-server").innerHTML = xmlhttp.responseText;
+}
+function show_add_server() {
+    document.getElementById("add-server").style.display = "block";
+}
+function hide_add_server() {
+    document.getElementById("add-server").style.display = "none";
+}
+function add_server() {
+    var form = document.getElementById("add-server").children[0];
+    var csrf_token = form.getElementsByTagName("input")[0].getAttribute("value");
+    var name = form.elements["name"].value;
+    form.elements["name"].value = "";
+    var image = form.elements["image"].value;
+    var flavor = form.elements["flavor"].value;
+    var body = "name="+name+"&image="+image+"&flavor="+flavor;
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("POST", "/cluster/"+curr_cluster+"/add-server/", false);
+    xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    xmlhttp.setRequestHeader("X-CSRFToken", csrf_token);
+    xmlhttp.send(body);
+    update_server();
+}
+function delete_server(server_name, server_id) {
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", "/cluster/"+curr_cluster+"/delete-server/"+server_name+"/"+server_id+"/", false);
+    xmlhttp.send();
+    update_server();
+}
+function init() {
+    update_server();
+    update_add_server();
+}
+
+var curr_cluster = "{{ curr_cluster }}";
+
+{% ifnotequal curr_cluster "" %}
+window.setInterval(update_server, 3000);
+window.addEventListener('DOMContentLoaded', init, false);
+{% endifnotequal %}
+</script>
+{% endblock %}
+
+{% block body %}
+<h1>Panini</h1>
+<h2>Platform for High Performance Computing</h2>
+<ul id="clusters">
+{% for cluster in clusters %}
+<li id="cluster-{{ cluster.name }}"><a href="/cluster/{{ cluster.name }}/">
+{% ifequal cluster.name curr_cluster %}<em>{% endifequal %}
+{{ cluster.name }}</a>
+{% ifequal cluster.name curr_cluster %}</em>{% endifequal %}
+<a href="#" onclick="delete_cluster('{{ cluster.name }}');">-</a></li>
+{% empty %}
+<li>No cluster!</li>
+{% endfor %}
+<li id="add_cluster" style="display: none;">
+<form method="POST" action="/add-cluster/">{% csrf_token %}
+{{ cluster_form.as_p }}
+<button type="button" class="btn" onclick="add_cluster();">Add cluster</button>
+</form>
+</li>
+<li>
+<a href="#" id="plus_cluster" onclick="show_add_cluster();">+</a>
+</li>
+<li><a href="/logout/">Exit</a></li>
+</ul>
+{% ifnotequal curr_cluster "" %}
+<div id="servers">Loading...</div>
+<div id="add-server" style="display: none;position:fixed;top:0;width:100%;height:100%;background:black">Loading...</div>
+{% endifnotequal %}
+{% endblock %}

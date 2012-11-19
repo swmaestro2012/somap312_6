@@ -1,0 +1,40 @@
+<table>
+<thead>
+<th>Server</th>
+<th>IP</th>
+<th>CPU</th>
+<th>Memory</th>
+<th>Disk</th>
+<th>Status</th>
+<th>Image</th>
+</thead>
+<tbody>
+{% for server in servers %}
+<tr class="">
+<td>{{ server.name }}</td>
+<td>
+    <ul>
+        {% for address in server.addresses.private %}
+        {% if address.version == 4 %}
+        <li>{{ address.addr }}</li>
+        {% endif %}
+        {% empty %}
+        <li>No IP</li>
+        {% endfor %}
+    </ul>
+</td>
+<td>{{ server.flavor.vcpus }} CPUs</td>
+<td>{{ server.flavor.ram }} MB</td>
+<td>{{ server.flavor.disk }} GB</td>
+<td>{{ server.status }}</td>
+<td>{{ server.image.name }}</td>
+<td><button type="button" class="btn btn-danger" onclick="delete_server('{{ server.name }}', '{{ server.id }}');">Delete</button></td>
+</tr>
+{% empty %}
+<tr><td colspan=6>Sorry, no server is launched!</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<div class="btn-group">
+    <button type="button" class="btn" onclick="show_add_server();">Launch</button>
+</div>
