@@ -19,7 +19,8 @@
         <label for="flavor" class="control-label">Flavor</label>
         <div class="controls">
             <select name="flavor" id="flavor">
-                {% for flavor in flavors %}                    <option value="{{ flavor.id }}">{{ flavor.name }} ( {{ flavor.vcpus }} CPUs / {{ flavor.ram }} MB Memory / {{ flavor.disk }} GB Disk )</option>
+                {% for flavor in flavors %}
+                <option value="{{ flavor.id }}">{{ flavor.name }} ( {{ flavor.vcpus }} CPUs / {{ flavor.ram }} MB Memory / {{ flavor.disk }} GB Disk )</option>
                 {% endfor %}
             </select>
         </div>

@@ -26,9 +26,12 @@
 <td>{{ server.flavor.vcpus }} CPUs</td>
 <td>{{ server.flavor.ram }} MB</td>
 <td>{{ server.flavor.disk }} GB</td>
-<td>{{ server.status }}</td>
+<td>{{ server.status }} {% if server.is_ready %}READY{% endif %}</td>
 <td>{{ server.image.name }}</td>
-<td><button type="button" class="btn btn-danger" onclick="delete_server('{{ server.name }}', '{{ server.id }}');">Delete</button></td>
+<td class="btn-group">
+<button type="button" class="btn{% if server.is_master %} btn-success{% endif %}"{% if server.is_ready %}{% else %} disabled{% endif %}>Master</button>
+<button type="button" class="btn{% if server.is_slave %} btn-success{% endif %}"{% if server.is_ready %}{% else %} disabled{% endif %}>Slave</button>
+<button type="button" class="btn btn-danger" onclick="delete_server('{{ server.name }}', '{{ server.id }}');">Delete</button></td>
 </tr>
 {% empty %}
 <tr><td colspan=6>Sorry, no server is launched!</td></tr>

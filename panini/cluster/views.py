@@ -8,6 +8,7 @@ from panini.cluster.models import Cluster, Server
 from panini.cluster.forms import ClusterForm
 import httplib, json
 import base64
+import re
 
 def add_cluster(request):
     if not commons.logged_in(request):
@@ -47,6 +48,8 @@ def add_server(request, curr_cluster):
         except ValidationError:
             pass
 
+    if request.method == 'POST':
+        return HttpResponseRedirect('/cluster/'+curr_cluster+'/')
     flavors = get_flavors(request)
     images = get_images(request)
 
@@ -78,18 +81,16 @@ def launch(request):
     if not commons.logged_in(request):
         return HttpResponseRedirect('/')
 
-    '''
     f = open('user_data.txt', 'r')
     user_data = f.read()
     f.close()
-    '''
 
     header = {'Content-type': 'application/json',
               'X-Auth-Token': request.session['access']['token']['id']}
     body = {'server': {'name': request.POST['name'],
                        'flavorRef': request.POST['flavor'],
                        'imageRef': request.POST['image'],
-                       #'user_data': base64.b64encode(user_data)
+                       'user_data': base64.b64encode(user_data)
                       }}
 
     nova_api(request, 'POST', '/v2/%(tenant_id)s/servers', header, body)
@@ -118,8 +119,16 @@ def servers(request, curr_cluster):
             s = servers_dict[server.name]
             s['flavor'] = flavors_dict[s['flavor']['id']]
             s['image'] = images_dict[s['image']['id']]
+            s['is_master'] = server.is_master
+            s['is_slave'] = server.is_slave
+            if not server.is_ready:
+                console_log = get_console_log(request, s['id'])
+                if re.search(r'^cloud\-init boot finished', console_log, re.M) != None:
+                    server.is_ready = True
+                    server.save()
+            s['is_ready'] = server.is_ready
         else:
-            s = {'name': server.name, 'flavor': {'vcpus': '0', 'ram': '0', 'disk': '0'}, 'status': 'NOT EXIST'}
+            s = {'name': server.name, 'flavor': {'vcpus': '0', 'ram': '0', 'disk': '0'}, 'status': 'NOT EXIST', 'is_master': False, 'is_slave': False}
         servers.append(s)
 
     t = loader.get_template('servers.html')
@@ -187,3 +196,79 @@ def get_images(request):
     data = nova_api(request, 'GET', '/v2/%(tenant_id)s/images/detail', header, body)
 
     return data['images']
+
+def get_console_log(request, server_id):
+    if not commons.logged_in(request):
+        return {}
+
+    header = {'Content-type': 'application/json',
+              'X-Auth-Token': request.session['access']['token']['id']}
+    body = {'os-getConsoleOutput': {}}
+
+    data = nova_api(request, 'POST', '/v2/%(tenant_id)s/servers/'+server_id+'/action', header, body)
+
+    if 'output' not in data:
+        return ''
+    return data['output']
+
+def chef_client_trigger(hostname, port=22):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(hostname=hostname, port=port, username="ubuntu")
+    ssh.exec_command("echo %s | sudo killall -USR1 chef-client" % ROOT_PASSWORD)
+
+def install(request, server_id):
+    if "access" not in request.session:
+        return {}
+
+    server = get_server(request, server_id)
+    node_name = server["name"]+".novalocal"
+
+    api = chef.autoconfigure()
+    node = chef.Node(node_name, api)
+    roles = request.GET.getlist("role")
+    for role in roles:
+        node.run_list.append("role["+role+"]")
+    node.save()
+
+    chef_client_trigger(server["name"])
+
+    return HttpResponseRedirect("/servers/show/"+server_id+"/")
+
+def uninstall(request, server_id):
+    if "access" not in request.session:
+        return {}
+    
+    server = get_server(request, server_id)
+    node_name = server["name"]+".novalocal"
+
+    api = chef.autoconfigure()
+    node = chef.Node(node_name, api)
+    roles = request.GET.getlist("role")
+    for role in roles:
+        node.run_list.remove("role["+role+"]")
+    node.save()
+
+    chef_client_trigger(server["name"])
+
+    return HttpResponseRedirect("/servers/show/"+server_id+"/")
+
+def installed_packages(request, server_id):
+    if "access" not in request.session:
+        return {}
+
+    server = get_server(request, server_id)
+
+    api = chef.api.autoconfigure()
+    node = api.api_request("GET", "/nodes/"+server["name"]+".novalocal")
+
+    installed_roles = []
+    for role in node["run_list"]:
+        m = re.match(r"^role\[(.*)\]$", role)
+        if m is not None:
+            installed_roles.append(m.group(1))
+
+    roles = api.api_request("GET", "/roles")
+    uninstalled_roles = [role for role in roles.keys() if role not in installed_roles]
+
+    return (installed_roles, uninstalled_roles)
