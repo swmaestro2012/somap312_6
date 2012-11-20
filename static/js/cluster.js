@@ -24,6 +24,7 @@ function update_server() {
     xmlhttp.open("GET", "/cluster/"+curr_cluster+"/servers/", false);
     xmlhttp.send();
     document.getElementById("servers").innerHTML = xmlhttp.responseText;
+    eval(document.getElementById("servers").getElementsByTagName("script")[0].innerText);
 }
 function update_add_server() {
     var xmlhttp = new XMLHttpRequest();
@@ -55,6 +56,18 @@ function add_server() {
 function delete_server(server_name, server_id) {
     var xmlhttp = new XMLHttpRequest();
     xmlhttp.open("GET", "/cluster/"+curr_cluster+"/delete-server/"+server_name+"/"+server_id+"/", false);
+    xmlhttp.send();
+    update_server();
+}
+function install_role(server_name, role) {
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", "/cluster/"+curr_cluster+"/server/"+server_name+"/install/"+role+"/", false);
+    xmlhttp.send();
+    update_server();
+}
+function uninstall_role(server_name, role) {
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", "/cluster/"+curr_cluster+"/server/"+server_name+"/uninstall/"+role+"/", false);
     xmlhttp.send();
     update_server();
 }

@@ -3,12 +3,15 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.core.context_processors import csrf
 from django.core.exceptions import ValidationError
 from panini import commons
-from panini.settings import NOVA_CONTROLLER
+from panini.settings import NOVA_CONTROLLER, CHEF_SERVER, CHEF_PORT, ROOT_PASSWORD
 from panini.cluster.models import Cluster, Server
 from panini.cluster.forms import ClusterForm
 import httplib, json
 import base64
 import re
+import chef
+import paramiko
+import os
 
 def add_cluster(request):
     if not commons.logged_in(request):
@@ -40,11 +43,12 @@ def add_server(request, curr_cluster):
     if 'name' in request.POST and 'flavor' in request.POST and 'image' in request.POST:
         name = request.POST['name']
 
-        server = Server(name=name, cluster=Cluster.objects.get(name=curr_cluster))
+        server = Server(name=name, server_id='', ip='', cluster=Cluster.objects.get(name=curr_cluster))
         try:
             server.full_clean()
+            data = launch(request)
+            server.server_id = data['server']['id']
             server.save()
-            launch(request)
         except ValidationError:
             pass
 
@@ -67,7 +71,10 @@ def delete_server(request, curr_cluster, server_name, server_id):
     if not commons.logged_in(request):
         return HttpResponseRedirect('/')
 
-    Server.objects.filter(name=server_name, cluster=Cluster.objects.get(name=curr_cluster)).delete()
+    server = Server.objects.get(name=server_name, cluster=Cluster.objects.get(name=curr_cluster))
+    delete_databag(server)
+    delete_chef_client(server_name)
+    server.delete()
 
     if server_id != None: 
         header = {'X-Auth-Token': request.session['access']['token']['id']}
@@ -93,7 +100,7 @@ def launch(request):
                        'user_data': base64.b64encode(user_data)
                       }}
 
-    nova_api(request, 'POST', '/v2/%(tenant_id)s/servers', header, body)
+    return nova_api(request, 'POST', '/v2/%(tenant_id)s/servers', header, body)
 
 def servers(request, curr_cluster):
     if not commons.logged_in(request):
@@ -164,6 +171,17 @@ def nova_api(request, method, uri, header, body, debug=False):
     conn.close()
     return data
 
+def get_server(request, server_id):
+    if not commons.logged_in(request):
+        return {}
+
+    header = {'X-Auth-Token': request.session['access']['token']['id']}
+    body = {}
+
+    data = nova_api(request, 'GET', '/v2/%(tenant_id)s/servers/'+server_id, header, body)
+
+    return data['server']
+
 def get_servers(request):
     if not commons.logged_in(request):
         return {}
@@ -211,64 +229,82 @@ def get_console_log(request, server_id):
         return ''
     return data['output']
 
-def chef_client_trigger(hostname, port=22):
+def get_chef_api():
+    api = chef.autoconfigure()
+    # chef.ChefAPI
+    return api
+
+def trigger_chef_client(hostname, port=22):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(hostname=hostname, port=port, username="ubuntu")
-    ssh.exec_command("echo %s | sudo killall -USR1 chef-client" % ROOT_PASSWORD)
+    ssh.connect(hostname=hostname, port=port, username="root", password=ROOT_PASSWORD)
+    ssh.exec_command("killall -USR1 chef-client")
 
-def install(request, server_id):
-    if "access" not in request.session:
-        return {}
+def delete_chef_client(server_name):
+    api = get_chef_api()
+    api.api_request('DELETE', '/clients/'+server_name+'.novalocal')
+    node = chef.Node(server_name+".novalocal", api)
+    node.delete(api)
 
-    server = get_server(request, server_id)
-    node_name = server["name"]+".novalocal"
+def is_installed(server_name, role):
+    api = get_chef_api()
+    node = chef.Node(server_name+".novalocal", api)
+    return "role["+role+"]" in node.run_list
 
-    api = chef.autoconfigure()
-    node = chef.Node(node_name, api)
-    roles = request.GET.getlist("role")
-    for role in roles:
-        node.run_list.append("role["+role+"]")
-    node.save()
+def install(request, curr_cluster, server_name, role):
+    if not commons.logged_in(request):
+        return HttpResponseRedirect('/cluster/'+curr_cluster+'/')
+    server = Server.objects.get(name=server_name)
+    if server.ip == '':
+        server_data = get_server(request, server.server_id)
+        for ip in server_data['addresses']['private']:
+            if ip['version'] == 4:
+                server.ip = ip['addr']
+                server.save()
+                os.system('echo '+server.ip+' '+server.name+'.novalocal >> /etc/hosts')
+                break
+    api = get_chef_api()
+    node = chef.Node(server_name+".novalocal", api)
+    if "role["+role+"]" not in node.run_list:
+        if role == 'vm-master':
+            update_databag(server, 1)
+            if 'role[vm-slave]' in node.run_list:
+                node.run_list.remove("role[vm-slave]")
+            node.run_list.append("role[vm-master]")
+            server.is_master = True
+            server.is_slave = False
+        elif role == 'vm-slave':
+            update_databag(server, 0)
+            if 'role[vm-master]' in node.run_list:
+                node.run_list.remove("role[vm-master]")
+            node.run_list.append("role[vm-slave]")
+            server.is_master = False
+            server.is_slave = True
+        node.save()
+        server.save()
+        print 'knife ssh name:'+server_name+'.novalocal -x root -P '+ROOT_PASSWORD+' "chef-client"'
+        os.system('knife ssh name:'+server_name+'.novalocal -x root -P '+ROOT_PASSWORD+' "chef-client"')
+        #trigger_chef_client(server_name)
+    return HttpResponseRedirect('/cluster/'+curr_cluster+'/')
 
-    chef_client_trigger(server["name"])
+def update_databag(server, is_master):
+    api = get_chef_api()
+    databag = chef.DataBag('multi_node', api)
+    item = databag['hd-cluster-setting']
+    for hadoop_node in item['hadoop_nodes']:
+        if hadoop_node['name'] == server.name:
+            hadoop_node['is_master'] = is_master
+            item.save()
+            return
+    item['hadoop_nodes'].append({'name': server.name, 'ip': server.ip, 'is_master': is_master})
+    item.save()
 
-    return HttpResponseRedirect("/servers/show/"+server_id+"/")
-
-def uninstall(request, server_id):
-    if "access" not in request.session:
-        return {}
-    
-    server = get_server(request, server_id)
-    node_name = server["name"]+".novalocal"
-
-    api = chef.autoconfigure()
-    node = chef.Node(node_name, api)
-    roles = request.GET.getlist("role")
-    for role in roles:
-        node.run_list.remove("role["+role+"]")
-    node.save()
-
-    chef_client_trigger(server["name"])
-
-    return HttpResponseRedirect("/servers/show/"+server_id+"/")
-
-def installed_packages(request, server_id):
-    if "access" not in request.session:
-        return {}
-
-    server = get_server(request, server_id)
-
-    api = chef.api.autoconfigure()
-    node = api.api_request("GET", "/nodes/"+server["name"]+".novalocal")
-
-    installed_roles = []
-    for role in node["run_list"]:
-        m = re.match(r"^role\[(.*)\]$", role)
-        if m is not None:
-            installed_roles.append(m.group(1))
-
-    roles = api.api_request("GET", "/roles")
-    uninstalled_roles = [role for role in roles.keys() if role not in installed_roles]
-
-    return (installed_roles, uninstalled_roles)
+def delete_databag(server):
+    api = get_chef_api()
+    databag = chef.DataBag('multi_node', api)
+    item = databag['hd-cluster-setting']
+    for hadoop_node in item['hadoop_nodes']:
+        if hadoop_node['name'] == server.name:
+            item['hadoop_nodes'].remove(hadoop_node)
+            item.save()
+            return

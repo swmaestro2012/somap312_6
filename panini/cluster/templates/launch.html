@@ -1,34 +1,37 @@
-<form method="POST" action="/cluster/{{ curr_cluster }}/add-server/" style="margin:0 auto;width:250px;height:300px;background:white">{% csrf_token %}
-    <div class="control-group">
-        <label for="name" class="control-label">Server Name</label>
-        <div class="controls">
-            <input type="text" name="name" id="name" placeholder="Server Name">
-        </div>
+<div style="width: 100%;"><a href="#add-a-new-server" role="button" class="btn" data-toggle="modal">Add a new server</a></div>
+<form method="POST" action="/cluster/{{ curr_cluster }}/add-server/" id="add-a-new-server" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="add-a-new-server-label" aria-hidden="true">{% csrf_token %}
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h3 id="add-a-new-server-label">Add a new server<h3>
     </div>
-    <div class="control-group">
-        <label for="image" class="control-label">Image</label>
-        <div class="controls">
-            <select name="image" id="image">
-                {% for image in images %}
-                <option value="{{ image.id }}">{{ image.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
+    <div class="modal-body">
+        <dl class="dl-horizontal">
+            <dt>Server Name</dt>
+            <dd><input type="text" name="name" id="name" placeholder="Server Name"></dd>
+            <dt>Image</dt>
+            <dd>
+                <select name="image" id="image">
+                    {% for image in images %}
+                    <option value="{{ image.id }}">{{ image.name }}</option>
+                    {% endfor %}
+                </select>
+            </dd>
+            <dt>Flavor</dt>
+            <dd>
+                <select name="flavor" id="flavor">
+                    {% for flavor in flavors %}
+                    <option value="{{ flavor.id }}">{{ flavor.name }} ( {{ flavor.vcpus }} CPUs / {{ flavor.ram }} MB Memory / {{ flavor.disk }} GB Disk )</option>
+                    {% endfor %}
+                </select>
+            </dd>
+        </dl>  
     </div>
-    <div class="control-group">
-        <label for="flavor" class="control-label">Flavor</label>
-        <div class="controls">
-            <select name="flavor" id="flavor">
-                {% for flavor in flavors %}
-                <option value="{{ flavor.id }}">{{ flavor.name }} ( {{ flavor.vcpus }} CPUs / {{ flavor.ram }} MB Memory / {{ flavor.disk }} GB Disk )</option>
-                {% endfor %}
-            </select>
-        </div>
-    </div>  
-    <div class="control-group">
-        <div class="controls btn-group">
-            <button type="button" class="btn btn-primary" onclick="add_server();">Launch</button>
-            <button type="button" class="btn" onclick="hide_add_server();">Close</button>
+    <div class="modal-footer">
+        <div class="control-group">
+            <div class="controls btn-group">
+                <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+                <button class="btn btn-primary">Add</button>
+            </div>
         </div>
     </div>
 </form>

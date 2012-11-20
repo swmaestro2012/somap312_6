@@ -1,4 +1,22 @@
-<table>
+<script type="text/javascript">
+cpu_data = [['Server', 'CPU']
+{% for server in servers %}
+,['{{ server.name }}', {{ server.flavor.vcpus }}]
+{% endfor %}
+];
+ram_data = [['Server', 'RAM']
+{% for server in servers %}
+,['{{ server.name }}', {{ server.flavor.ram }}]
+{% endfor %}
+];
+disk_data = [['Server', 'Disk']
+{% for server in servers %}
+,['{{ server.name }}', {{ server.flavor.disk }}]
+{% endfor %}
+];
+drawChart();
+</script>
+<table class="table table-striped">
 <thead>
 <th>Server</th>
 <th>IP</th>
@@ -7,13 +25,14 @@
 <th>Disk</th>
 <th>Status</th>
 <th>Image</th>
+<th>Action</th>
 </thead>
 <tbody>
 {% for server in servers %}
 <tr class="">
 <td>{{ server.name }}</td>
 <td>
-    <ul>
+    <ul class="nav nav-tabs nav-stacked">
         {% for address in server.addresses.private %}
         {% if address.version == 4 %}
         <li>{{ address.addr }}</li>
@@ -28,16 +47,16 @@
 <td>{{ server.flavor.disk }} GB</td>
 <td>{{ server.status }} {% if server.is_ready %}READY{% endif %}</td>
 <td>{{ server.image.name }}</td>
-<td class="btn-group">
-<button type="button" class="btn{% if server.is_master %} btn-success{% endif %}"{% if server.is_ready %}{% else %} disabled{% endif %}>Master</button>
-<button type="button" class="btn{% if server.is_slave %} btn-success{% endif %}"{% if server.is_ready %}{% else %} disabled{% endif %}>Slave</button>
-<button type="button" class="btn btn-danger" onclick="delete_server('{{ server.name }}', '{{ server.id }}');">Delete</button></td>
+<td>
+<div class="btn-group">
+<button type="button" class="btn{% if server.is_master %} btn-success{% endif %}"{% if server.is_ready %}{% else %} disabled{% endif %} onclick="install_role('{{ server.name }}', 'vm-master');">Master</button>
+<button type="button" class="btn{% if server.is_slave %} btn-success{% endif %}"{% if server.is_ready %}{% else %} disabled{% endif %} onclick="install_role('{{ server.name }}', 'vm-slave');">Slave</button>
+<button type="button" class="btn btn-danger" onclick="delete_server('{{ server.name }}', '{{ server.id }}');">Delete</button>
+</div>
+</td>
 </tr>
 {% empty %}
 <tr><td colspan=6>Sorry, no server is launched!</td></tr>
 {% endfor %}
 </tbody>
 </table>
-<div class="btn-group">
-    <button type="button" class="btn" onclick="show_add_server();">Launch</button>
-</div>

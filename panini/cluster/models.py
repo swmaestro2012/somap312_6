@@ -8,7 +8,9 @@ class Cluster(models.Model):
         return self.name
 
 class Server(models.Model):
-    name = models.CharField(max_length=30)
+    name = models.CharField(max_length=30, unique=True)
+    server_id = models.CharField(max_length=40, blank=True)
+    ip = models.CharField(max_length=15, blank=True)
     cluster = models.ForeignKey(Cluster)
     is_master = models.BooleanField(default=False)
     is_slave = models.BooleanField(default=False)
@@ -17,5 +19,5 @@ class Server(models.Model):
     def __unicode__(self):
         return self.name+' in '+unicode(self.cluster)
 
-    class Meta:
-        unique_together = ('name', 'cluster')
+    #class Meta:
+    #    unique_together = ('name', 'cluster')
