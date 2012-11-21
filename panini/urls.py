@@ -21,4 +21,6 @@ urlpatterns = patterns('',
     url(r'^delete-cluster/(?P<cluster>[\w\-]+)/$', 'panini.cluster.views.delete_cluster'),
     url(r'^cluster/(?P<curr_cluster>[\w\-]*)/?$', 'panini.views.cluster'),
     url(r'^cluster/(?P<curr_cluster>[\w\-]+)/', include('panini.cluster.urls')),
+    url(r'^hdfs/(?P<curr_cluster>[\w\-]+)/', include('panini.hdfs.urls')),
+    url(r'^mapreduce/(?P<curr_cluster>[\w\-]+)/', include('panini.mapreduce.urls')),
 )

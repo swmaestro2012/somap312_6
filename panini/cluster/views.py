@@ -17,9 +17,8 @@ def add_cluster(request):
     if not commons.logged_in(request):
         return HttpResponseRedirect('/')
     if request.method == 'POST':
-        cluster_form = ClusterForm(request.POST)
-        if cluster_form.is_valid():
-            cluster_form.save()
+        if len(Cluster.objects.filter(name=request.POST['name'])) == 0:
+            cluster = Cluster.objects.create(name=request.POST['name'], master=None)
     return HttpResponseRedirect('/')
 
 def delete_cluster(request, cluster):
@@ -43,7 +42,7 @@ def add_server(request, curr_cluster):
     if 'name' in request.POST and 'flavor' in request.POST and 'image' in request.POST:
         name = request.POST['name']
 
-        server = Server(name=name, server_id='', ip='', cluster=Cluster.objects.get(name=curr_cluster))
+        server = Server(name=name, server_id='', ip='', cluster_in=Cluster.objects.get(name=curr_cluster))
         try:
             server.full_clean()
             data = launch(request)
@@ -71,9 +70,15 @@ def delete_server(request, curr_cluster, server_name, server_id):
     if not commons.logged_in(request):
         return HttpResponseRedirect('/')
 
-    server = Server.objects.get(name=server_name, cluster=Cluster.objects.get(name=curr_cluster))
-    delete_databag(server)
-    delete_chef_client(server_name)
+    server = Server.objects.get(name=server_name, cluster_in=Cluster.objects.get(name=curr_cluster))
+    try:
+        delete_databag(server)
+    except Exception:
+        pass
+    try:
+        delete_chef_client(server_name)
+    except Exception:
+        pass
     server.delete()
 
     if server_id != None: 
@@ -138,9 +143,12 @@ def servers(request, curr_cluster):
             s = {'name': server.name, 'flavor': {'vcpus': '0', 'ram': '0', 'disk': '0'}, 'status': 'NOT EXIST', 'is_master': False, 'is_slave': False}
         servers.append(s)
 
+    has_master = True if Cluster.objects.get(name=curr_cluster).master != None else False
+
     t = loader.get_template('servers.html')
     c = {
             'curr_cluster': curr_cluster,
+            'has_master': has_master,
             'servers': servers,
             'flavors': flavors,
             'images': images,
@@ -267,44 +275,66 @@ def install(request, curr_cluster, server_name, role):
     node = chef.Node(server_name+".novalocal", api)
     if "role["+role+"]" not in node.run_list:
         if role == 'vm-master':
-            update_databag(server, 1)
+            if server.cluster_in.master != None: 
+                return HttpResponseRedirect('/cluster/'+curr_cluster+'/')
+            server.cluster_in.master = server
+            server.cluster_in.save()
+            update_databag(server, '1')
             if 'role[vm-slave]' in node.run_list:
                 node.run_list.remove("role[vm-slave]")
             node.run_list.append("role[vm-master]")
             server.is_master = True
             server.is_slave = False
+            node.save()
+            server.save()
+            trigger_chef_client(server_name)
         elif role == 'vm-slave':
-            update_databag(server, 0)
+            update_databag(server, '0')
             if 'role[vm-master]' in node.run_list:
                 node.run_list.remove("role[vm-master]")
             node.run_list.append("role[vm-slave]")
             server.is_master = False
             server.is_slave = True
-        node.save()
-        server.save()
-        print 'knife ssh name:'+server_name+'.novalocal -x root -P '+ROOT_PASSWORD+' "chef-client"'
-        os.system('knife ssh name:'+server_name+'.novalocal -x root -P '+ROOT_PASSWORD+' "chef-client"')
-        #trigger_chef_client(server_name)
+            node.save()
+            server.save()
+            trigger_chef_client(server_name)
+            trigger_chef_client(server.cluster_in.master.name)
     return HttpResponseRedirect('/cluster/'+curr_cluster+'/')
 
-def update_databag(server, is_master):
+def get_databag():
     api = get_chef_api()
     databag = chef.DataBag('multi_node', api)
-    item = databag['hd-cluster-setting']
+    return databag['hd-cluster-setting']
+    '''
+    f = open('multi_node.json', 'r')
+    raw = f.read()
+    f.close()
+    return json.loads(raw)
+    '''
+
+def set_databag(item):
+    item.save()
+    '''
+    f = open('multi_node.json', 'w')
+    f.write(json.dumps(item))
+    f.close()
+    os.system('knife data bag from file multi_node multi_node.json')
+    '''
+
+def update_databag(server, is_master):
+    item = get_databag()
     for hadoop_node in item['hadoop_nodes']:
         if hadoop_node['name'] == server.name:
             hadoop_node['is_master'] = is_master
-            item.save()
+            set_databag(item)
             return
     item['hadoop_nodes'].append({'name': server.name, 'ip': server.ip, 'is_master': is_master})
-    item.save()
+    set_databag(item)
 
 def delete_databag(server):
-    api = get_chef_api()
-    databag = chef.DataBag('multi_node', api)
-    item = databag['hd-cluster-setting']
+    item = get_databag()
     for hadoop_node in item['hadoop_nodes']:
         if hadoop_node['name'] == server.name:
             item['hadoop_nodes'].remove(hadoop_node)
-            item.save()
+            set_databag(item)
             return

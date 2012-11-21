@@ -20,6 +20,8 @@ runcmd:
 #expect -c "spawn knife configure -i" -c "expect -re \"Overwrite /root/.chef/knife.rb? (Y/N)\"" -c "send Y\n" -c "expect -re \"Please enter the chef server URL\:\"" -c "send http://61.43.139.122:4000"
 #- expect -c "spawn knife configure -i \n" -c "expect -re \"the config file?\"" -c "send /root/.chef/knife.rb\n" -c "sleep 10" -c "expect -re \"chef server URL:\"" -c "send http://61.43.139.121:4000\n" -c "sleep 3" -c "expect -re \"new client:\"" -c "send [info hostname]\n" -c "expect -re \"admin clientname:\"" -c "send \n" -c "expect -re \"private key:\"" -c "send \n" -c "expect -re \"validation clientname:\"" -c "send \n" -c "expect -re \"validation key:\"" -c "send \n" -c "expect -re \"validation key:\"" -c "send \n" -c "interact"
 #- expect -c "spawn knife configure -i \n" -c "expect -re \"(Y/N)\"" -c "send Y\n" -c "expect -re \"the config file?\"" -c "send \n" -c "sleep 10" -c "expect -re \"chef server URL:\"" -c "send http://61.43.139.122:4000\n" -c "sleep 3" -c "expect -re \"new client:\"" -c "send chef-gluster-vm-m\n" -c "expect -re \"admin clientname:\"" -c "send \n" -c "expect -re \"private key:\"" -c "send \n" -c "expect -re \"validation clientname:\"" -c "send \n" -c "expect -re \"validation key:\"" -c "send \n" -c "expect -re \"validation key:\"" -c "send \n" -c "interact"
-- mv /etc/chef/client.rb /etc/chef/client.rb_
-- sed "s/STDOUT/\"\/root\/chef.log\"/g" /etc/chef/client.rb_ > /etc/chef/client.rb
+- mv /root/.chef/knife.rb /root/.chef/knife.rb_
+#- mv /etc/chef/client.rb /etc/chef/client.rb_
+- sed "s/STDOUT/\"\/root\/chef.log\"/g" /root/.chef/knife.rb_ > /root/.chef/knife.rb
+#- sed "s/STDOUT/\"\/root\/chef.log\"/g" /etc/chef/client.rb_ > /etc/chef/client.rb
 - chef-client

@@ -32,6 +32,18 @@ function update_add_server() {
     xmlhttp.send();
     document.getElementById("add-server").innerHTML = xmlhttp.responseText;
 }
+function update_hdfs(cmd, path) {
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", "/hdfs/"+curr_cluster+"/"+cmd+path, false);
+    xmlhttp.send();
+    document.getElementById("hdfs").innerHTML = xmlhttp.responseText;
+}
+function update_mapreduce() {
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.open("GET", "/mapreduce/"+curr_cluster+"/launch/", false);
+    xmlhttp.send();
+    document.getElementById("mapreduce").innerHTML = xmlhttp.responseText;
+}
 function show_add_server() {
     document.getElementById("add-server").style.display = "block";
 }
@@ -74,4 +86,6 @@ function uninstall_role(server_name, role) {
 function init() {
     update_server();
     update_add_server();
+    update_hdfs('show','/');
+    update_mapreduce();
 }

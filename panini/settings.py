@@ -110,6 +110,7 @@ TEMPLATE_DIRS = (
     # Don't forget to use absolute paths, not relative paths.
     '/root/panini/templates',
     '/root/panini/panini/cluster/templates',
+    '/root/panini/panini/hdfs/templates',
 )
 
 INSTALLED_APPS = (
@@ -124,6 +125,8 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
     'panini.cluster',
+    'panini.hdfs',
+    'panini.mapreduce',
 )
 
 # A sample logging configuration. The only tangible logging

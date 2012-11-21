@@ -1,0 +1,39 @@
+{% load epoch %}
+<ul class="breadcrumb">
+{% for node in path %}
+<li>
+<a href="#" onclick="update_hdfs('show','{{ node.uri }}');">{{ node.name }}</a>
+<span class="divider">/</span>
+</li>
+{% endfor %}
+</ul>
+<table class="table table-striped">
+<thead>
+<tr>
+<th>Name</th>
+<th>Modification Time and Date</th>
+<th>Action</th>
+</thead>
+<tbody>
+{% for file in files %}
+<tr>
+<td>
+<i class="icon-{% ifequal file.type "FILE" %}file{% else %}folder-open{% endifequal %}"></i>
+<a href="#" onclick="update_hdfs('show','{{ path_accum }}{{ file.pathSuffix }}');">{{ file.pathSuffix }}</a>
+</td>
+<td>{{ file.modificationTime|epoch_to_datetime|date:"r" }}</td>
+<td><a href="#" role="button" class="btn btn-danger" onclick="update_hdfs('delete','{{ path_accum }}{{ file.pathSuffix }}');">Delete</a></td>
+</tr>
+{% empty %}
+<tr><td>No file.</td></tr>
+{% endfor %}
+</tbody>
+</table>
+<form method="POST" action="/hdfs/{{ curr_cluster }}/mkdir{{ path_accum }}" class="form-inline half pull-left text-center">{% csrf_token %}
+<input type="text" name="dir">
+<button type="submit" class="btn">Create Directory</button>
+</form>
+<form method="POST" action="/hdfs/{{ curr_cluster }}/put{{ path_accum }}" enctype="multipart/form-data" class="form-inline half pull-left text-center">{% csrf_token %}
+<input type="file" name="file">
+<button type="submit" class="btn">Upload File</button>
+</form>

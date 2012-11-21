@@ -1,0 +1,27 @@
+<div class="text-center"><a href="#launch-a-new-mapreduce" role="button" class="btn btn-info" data-toggle="modal">Launch a new MapReduce</a></div>
+<form method="POST" action="/launch/" enctype="multipart/form-data" id="launch-a-new-mapreduce" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="launch-a-new-mapreduce-label" aria-hidden="true">{% csrf_token %}
+    <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h3 id="launch-a-new-mapreduce-label">Launch a new MapReduce</h3>
+    </div>
+    <div class="modal-body">
+        <dl class="dl-horizontal">
+            <dt>JAR File</dt>
+            <dd><input type="file" name="jar"></dd>
+            <dt>MapReduce Class</dt>
+            <dd><input type="text" name="class"></dd>
+            <dt>Input</dt>
+            <dd><input type="text" name="input"></dd>
+            <dt>Output</dt>
+            <dd><input type="text" name="output"></dd>
+        </dl>
+    </div>
+    <div class="modal-footer">
+        <div class="control-group">
+            <div class="controls btn-group">
+                <button class="btn" data-dismiss="modal" aria-hidden="true">Close</button>
+                <button class="btn btn-primary">Launch</button>
+            </div>
+        </div>
+    </div>
+</form>

@@ -1,2 +1,6 @@
+.full{ width: 100%; }
 .half { width: 50%; }
 .chart { width: 33%; height: 200px; }
+.text-center { text-align: center; }
+#mapreduce { width: 100%; }
+body { padding: 10px; }

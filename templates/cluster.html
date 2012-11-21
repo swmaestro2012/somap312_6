@@ -40,7 +40,7 @@ window.addEventListener('DOMContentLoaded', init, false);
     <div class="modal-body">
         <dl class="dl-horizontal">
             <dt>Cluster Name</dt>
-            <dd>{{ cluster_form.name }}</dd>
+            <dd><input type="text" name="name"></dd>
         </dl>
     </div>
     <div class="modal-footer">
@@ -54,18 +54,14 @@ window.addEventListener('DOMContentLoaded', init, false);
 </form>
 
 {% ifnotequal curr_cluster "" %}
-<div id="openstack" class="half pull-left">
-    <div id="servers">Servers</div>
-    <div id="chart">
-        <div id="cpu_chart" class="chart pull-left">CPU Chart</div>
-        <div id="ram_chart" class="chart pull-left">RAM Chart</div>
-        <div id="disk_chart" class="chart pull-left">Disk Chart</div>
-    </div>
-    <div id="add-server"></div>
+<div id="servers" class="full">Servers</div>
+<div id="chart" class="full">
+    <div id="cpu_chart" class="chart pull-left">CPU Chart</div>
+    <div id="ram_chart" class="chart pull-left">RAM Chart</div>
+    <div id="disk_chart" class="chart pull-left">Disk Chart</div>
 </div>
-<div id="hadoop" class="pull-right">
-    <div id="hdfs" class="pull-right">HDFS</div>
-    <div id="hdfs" class="pull-right">MapReduce</div>
-</div>
+<div id="add-server" class="full" style="margin-bottom:2em;"></div>
+<div id="hdfs" class="full">HDFS</div>
+<div id="mapreduce" class="full" style="margin-bottom:2em;">MapReduce</div>
 {% endifnotequal %}
 {% endblock %}

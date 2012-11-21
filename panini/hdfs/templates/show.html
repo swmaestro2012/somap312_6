@@ -1,0 +1,17 @@
+{% load epoch %}
+<html>
+<head>
+<title>WebHDFS</title>
+</head>
+<body>
+<h1>WebHDFS</h1>
+<h2>
+{% for node in path %}
+<span><a href="{{ node.uri }}">{{ node.name }}</a></span>
+{% endfor %}
+</h2>
+<div>
+{{ file }}
+</div>
+</table>
+</body>
